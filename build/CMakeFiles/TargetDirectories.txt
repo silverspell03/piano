@@ -1,0 +1,8 @@
+/home/jospeh/projets/piano/build/CMakeFiles/piano.dir
+/home/jospeh/projets/piano/build/CMakeFiles/edit_cache.dir
+/home/jospeh/projets/piano/build/CMakeFiles/rebuild_cache.dir
+/home/jospeh/projets/piano/build/vendored/SDL/CMakeFiles/SDL3-shared.dir
+/home/jospeh/projets/piano/build/vendored/SDL/CMakeFiles/SDL3_test.dir
+/home/jospeh/projets/piano/build/vendored/SDL/CMakeFiles/SDL_uclibc.dir
+/home/jospeh/projets/piano/build/vendored/SDL/CMakeFiles/edit_cache.dir
+/home/jospeh/projets/piano/build/vendored/SDL/CMakeFiles/rebuild_cache.dir

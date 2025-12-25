@@ -1,0 +1,1 @@
+/usr/bin/cc -g -Wl,--dependency-file=CMakeFiles/piano.dir/link.d CMakeFiles/piano.dir/piano.c.o -o Debug/piano  -Wl,-rpath,/home/jospeh/projets/piano/build/Debug Debug/libSDL3.so.0.3.7 -lm

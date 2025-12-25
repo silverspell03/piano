@@ -1,0 +1,17 @@
+[
+  {
+    "arguments": [
+      "/usr/bin/cc",
+      "-I/home/jospeh/projets/piano/build/vendored/SDL/include-revision",
+      "-I/home/jospeh/projets/piano/vendored/SDL/include",
+      "-g",
+      "-c",
+      "-o",
+      "CMakeFiles/piano.dir/piano.c.o",
+      "/home/jospeh/projets/piano/piano.c"
+    ],
+    "directory": "/home/jospeh/projets/piano/build",
+    "file": "/home/jospeh/projets/piano/piano.c",
+    "output": "/home/jospeh/projets/piano/build/CMakeFiles/piano.dir/piano.c.o"
+  }
+]
