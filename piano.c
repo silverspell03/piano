@@ -15,6 +15,8 @@
 #include <stdlib.h>
 #include <time.h>
 
+const float fps = 60.0;
+
 enum WAVE_FORM{
   SINE_FORM,
   SQUARE_FORM,
@@ -129,39 +131,37 @@ static void GenerateNote(enum WAVE_FORM form, void *buf, SDL_AudioStream *stream
 
 static void DrawData(SDL_Renderer *renderer, SDL_Window *window, void *buf, int samples, SDL_AudioSpec *spec)
 {
-  float *data;
-  int size_data;
-  switch (spec->format)
-  {
-    case SDL_AUDIO_F32:
-      data = buf;
-      size_data = sizeof(float);
-  }
+  float *data = buf;
+  int size_data = sizeof(float);;
   
   float x, y;
   int w, h;
   SDL_GetWindowSize(window, &w, &h);
-  float scale_x = w / 1.0; 
-  float scale_y = h / 2.0;
+  float scale_x = 1.0; 
+  float scale_y = 100.0;
+  SDL_FPoint points[samples];
 
-  for (int i = 0; i < samples * size_data; i++)
+  SDL_SetRenderDrawColor(renderer, 255, 255, 255, SDL_ALPHA_OPAQUE);
+
+  for (int i = 0; i < samples; i++)
   {
-    x = (float)i;
-    x = scale_x * x;
-    y = scale_y * y;
-    SDL_SetRenderDrawColor(renderer, 255, 255, 255, SDL_ALPHA_OPAQUE);
-    SDL_RenderPoint(renderer, x, y);
+    x = (float)i - w / 2.0;
+    y = (data[i] + h / 2.0) * scale_y;
+    SDL_FPoint val = {x, y};
+    points[i] = val;
   }
+  
+  SDL_RenderPoints(renderer, points, samples);
 }
 
 /* This function runs once at startup. */
 SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
 
-  if (argc !=2)
-  {
-    printf("Usage: %s <expression>", argv[0]);
-    return 0;
-  }
+  // if (argc !=2)
+  // {
+  //   printf("Usage: %s <expression>", argv[0]);
+  //   return 0;
+  // }
 
   if (!SDL_Init(SDL_INIT_VIDEO)) {
     SDL_Log("Couldn't initialize SDL: %s", SDL_GetError());
@@ -176,6 +176,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
 
   srand(time(NULL)); // seed with current time
   struct AppCtx *appctx = calloc(1, sizeof(*appctx));
+  *appstate = appctx;
   if (!SDL_CreateWindowAndRenderer("Piano!", 900, 600, 0, &appctx->window,
                                    &appctx->renderer)) {
     SDL_Log("Couldn't create window/renderer: %s", SDL_GetError());
@@ -229,7 +230,6 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
   SDL_AudioStream *stream = appctx->stream;
 
   struct WaveCtx *wavectx = appctx->wavectx;
-  float fps = 1.0/60.0;
   int samples = fps * appctx->spec.freq;
   
   SDL_SetRenderDrawColor(ren, 0, 0, 0, SDL_ALPHA_OPAQUE);
@@ -238,7 +238,7 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 
   float *buf = malloc(samples * sizeof(float));
 
-  // GenerateNote(SQUARE_FORM, buf, stream, &ctx, samples);
+  GenerateNote(SINE_FORM, buf, stream, wavectx, samples);
   
   SDL_PutAudioStreamDataNoCopy(stream, buf, samples, NULL, NULL);
 
