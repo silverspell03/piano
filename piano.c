@@ -15,13 +15,17 @@
 #include <stdlib.h>
 #include <time.h>
 
-const float fps = 60.0;
+#define SAMPLE_RATE 48000;
+#define CHANNELS 1;
+#define FPS 60;
+#define SAMPLES_PER_FRAME SAMPLE_RATE / FPS;
+#define VISUAL_SAMPLES (SAMPLE_RATE / 10) // show last 100 ms ~4800 samples
+
+typedef float sample_t;
 
 enum WAVE_FORM{
   SINE_FORM,
   SQUARE_FORM,
-  TRIANGLE_FORM,
-  SAW_FORM 
 };
 
 struct WaveCtx {
@@ -38,6 +42,33 @@ struct AppCtx {
   SDL_AudioStream *stream;
   SDL_AudioSpec spec;
 };
+
+typedef struct {
+    sample_t *buf;
+    size_t size;      // power-of-two recommended
+    size_t head;      // write index (next write)
+    size_t mask;      // size - 1
+} RingBuffer;
+
+static int rb_init(RingBuffer *rb, size_t size_pow2)
+{
+  rb->size = size_pow2;
+  rb->buf = malloc(rb->size * sizeof(buf));
+  rb->head= 0;
+  rb->mask = rb->size - 1;
+  return 0;
+}
+
+static int rb_write_block(RingBuffer *rb, const sample_t *in, size_t n)
+{
+
+}
+
+static int rb_free(RingBuffer *rb)
+{
+  free(rb->buf);
+  rb->buf = NULL;
+}
 
 
 static float now_secondsf() {
@@ -139,7 +170,7 @@ static void DrawData(SDL_Renderer *renderer, SDL_Window *window, void *buf, int 
   SDL_GetWindowSize(window, &w, &h);
   float scale_x = 1.0; 
   float scale_y = 100.0;
-  SDL_FPoint points[samples];
+  SDL_FPoint *points = malloc((size_t)samples * sizeof(*points));
 
   SDL_SetRenderDrawColor(renderer, 255, 255, 255, SDL_ALPHA_OPAQUE);
 
@@ -152,44 +183,24 @@ static void DrawData(SDL_Renderer *renderer, SDL_Window *window, void *buf, int 
   }
   
   SDL_RenderPoints(renderer, points, samples);
+  free(points);
 }
 
 /* This function runs once at startup. */
-SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
+int main(int argc, char **argv)
+{
 
-  // if (argc !=2)
-  // {
-  //   printf("Usage: %s <expression>", argv[0]);
-  //   return 0;
-  // }
-
-  if (!SDL_Init(SDL_INIT_VIDEO)) {
+  if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) != 0) {
     SDL_Log("Couldn't initialize SDL: %s", SDL_GetError());
     return SDL_APP_FAILURE;
   }
-
-  if (!SDL_Init(SDL_INIT_AUDIO)) {
-    SDL_Log("Couldn't initialize SDL: %s", SDL_GetError());
-    return SDL_APP_FAILURE;
-  }
-
 
   srand(time(NULL)); // seed with current time
-  struct AppCtx *appctx = calloc(1, sizeof(*appctx));
-  *appstate = appctx;
   if (!SDL_CreateWindowAndRenderer("Piano!", 900, 600, 0, &appctx->window,
                                    &appctx->renderer)) {
     SDL_Log("Couldn't create window/renderer: %s", SDL_GetError());
     return SDL_APP_FAILURE;
   }
-  SDL_SetRenderVSync(appctx->renderer, 1);
-  appctx->spec.format = SDL_AUDIO_F32;
-  appctx->spec.channels = 1;
-  appctx->spec.freq = 44100;
-  appctx->wavectx = calloc(1, sizeof(struct WaveCtx));
-  appctx->wavectx->volume = 0.1f;
-  appctx->wavectx->phase = 0.0f;
-  appctx->wavectx->frequency = 440.0f;
 
   SDL_AudioStream *stream = SDL_OpenAudioDeviceStream(
       SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, /* device id (default playback) */
@@ -203,54 +214,8 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
       SDL_Quit();
       return 1;
   }
-  appctx->stream = stream;
-
-  SDL_SetAppMetadata("Piano!", "1.0", "org.jospeh.piano");
-
   /* Start playback of the stream's device */
   SDL_ResumeAudioStreamDevice(stream);
-  return SDL_APP_CONTINUE; /* carry on with the program! */
-}
 
-/* This function runs when a new event (mouse input, keypresses, etc) occurs. */
-SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
-  switch (event->type) {
-  case SDL_EVENT_QUIT:
-    return SDL_APP_SUCCESS; /* end the program, reporting success to the OS. */
-  }
-  return SDL_APP_CONTINUE; /* carry on with the program! */
-}
-
-/* This function runs once per frame, and is the heart of the program. */
-SDL_AppResult SDL_AppIterate(void *appstate) {
-
-  struct AppCtx *appctx = (struct AppCtx *)appstate;
-  SDL_Renderer *ren = appctx->renderer;
-  SDL_Window *win = appctx->window;
-  SDL_AudioStream *stream = appctx->stream;
-
-  struct WaveCtx *wavectx = appctx->wavectx;
-  int samples = fps * appctx->spec.freq;
-  
-  SDL_SetRenderDrawColor(ren, 0, 0, 0, SDL_ALPHA_OPAQUE);
-  SDL_RenderClear(ren);
-
-
-  float *buf = malloc(samples * sizeof(float));
-
-  GenerateNote(SINE_FORM, buf, stream, wavectx, samples);
-  
-  SDL_PutAudioStreamDataNoCopy(stream, buf, samples, NULL, NULL);
-
-  /* Start playback of the stream's device */
-  if (!SDL_ResumeAudioStreamDevice(stream)) printf("%s\n", SDL_GetError());
-  DrawData(ren, win, buf, samples, &appctx->spec);
-  SDL_RenderPresent(ren);
-
-  return SDL_APP_CONTINUE; /* carry on with the program! */
-}
-
-/* This function runs once at shutdown. */
-void SDL_AppQuit(void *appstate, SDL_AppResult result) {
-  /* SDL will clean up the window/renderer for us. */
+  return 0;
 }
