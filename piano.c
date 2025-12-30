@@ -1,5 +1,4 @@
 #include <stddef.h>
-#define SDL_MAIN_USE_CALLBACKS 1 /* use the callbacks instead of main() */
 #include "SDL3/SDL_audio.h"
 #include "SDL3/SDL_pixels.h"
 #include "SDL3/SDL_rect.h"
@@ -15,10 +14,10 @@
 #include <stdlib.h>
 #include <time.h>
 
-#define SAMPLE_RATE 48000;
-#define CHANNELS 1;
-#define FPS 60;
-#define SAMPLES_PER_FRAME SAMPLE_RATE / FPS;
+#define SAMPLE_RATE 48000
+#define CHANNELS 1
+#define FPS 60
+#define SAMPLES_PER_FRAME (SAMPLE_RATE / FPS)
 #define VISUAL_SAMPLES (SAMPLE_RATE / 10) // show last 100 ms ~4800 samples
 
 typedef float sample_t;
@@ -127,7 +126,7 @@ static void GenerateSquareWave(struct WaveCtx *ctx, void *buf,
   SDL_PutAudioStreamData(stream, buf, samples);
 }
 
-static void GenerateNoise(RingBuffer *buf, int samples) {
+static void GenerateNoise(void *buf, int samples) {
   if (samples <= 0)
     return;
 
@@ -165,10 +164,10 @@ static void GenerateNote(enum WAVE_FORM form, void *buf,
 }
 
 static void DrawData(SDL_Renderer *renderer, SDL_Window *window, void *buf,
-                     int samples, SDL_AudioSpec *spec) {
+                     int samples, SDL_AudioSpec *spec) 
+{
   float *data = buf;
   int size_data = sizeof(float);
-  ;
 
   float x, y;
   int w, h;
@@ -199,6 +198,10 @@ int main(int argc, char **argv) {
   }
 
   srand(time(NULL)); // seed with current time
+  
+  float *b_audio = malloc(SAMPLES_PER_FRAME * sizeof(float));
+
+  GenerateNoise(b_audio, SAMPLES_PER_FRAME);
 
   RingBuffer rb;
   rb_init(&rb, 32);
