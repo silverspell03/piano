@@ -1,46 +1,22 @@
-#include <stddef.h>
 #include "SDL3/SDL_audio.h"
-#include "SDL3/SDL_pixels.h"
-#include "SDL3/SDL_rect.h"
 #include "SDL3/SDL_render.h"
 #include "SDL3/SDL_video.h"
-#include "vendored/tinyexp/tinyexpr.h"
-#include <bits/time.h>
-#include <setjmp.h>
-
 #include <SDL3/SDL.h>
+#include <bits/time.h>
 #include <math.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 
-#define SAMPLE_RATE 48000
+#define SAMPLE_RATE 48000.0
 #define CHANNELS 1
-#define FPS 60
+#define FPS 60.0
 #define SAMPLES_PER_FRAME (SAMPLE_RATE / FPS)
 #define VISUAL_SAMPLES (SAMPLE_RATE / 10) // show last 100 ms ~4800 samples
+#define CHUNK_SAMPLES 1024
 
 typedef float sample_t;
-
-enum WAVE_FORM {
-  SINE_FORM,
-  SQUARE_FORM,
-};
-
-struct WaveCtx {
-  double volume;
-  double phase;
-  int frequency;
-};
-
-struct AppCtx {
-  struct WaveCtx *wavectx;
-  struct expression *expr;
-  SDL_Renderer *renderer;
-  SDL_Window *window;
-  SDL_AudioStream *stream;
-  SDL_AudioSpec spec;
-};
 
 typedef struct {
   sample_t *buf;
@@ -48,6 +24,11 @@ typedef struct {
   size_t head; // write index (next write)
   size_t mask; // size - 1
 } RingBuffer;
+
+typedef struct {
+  float phase;
+  float freq;
+} Osc;
 
 static int rb_init(RingBuffer *rb, size_t size_pow2) {
   rb->size = size_pow2;
@@ -59,13 +40,16 @@ static int rb_init(RingBuffer *rb, size_t size_pow2) {
 
 static int rb_write_block(RingBuffer *rb, const sample_t *in, size_t n) {
   for (int i = 0; i < n; i++) {
-    rb->buf[i + rb->head & rb->mask] = in[i];
-    rb->head++;
+    rb->buf[(i + rb->head) & rb->mask] = in[i];
   }
+  rb->head += n;
   return 0;
 }
 
-static int rb_read_block(RingBuffer *rb, const sample_t *out, size_t n) {
+static int rb_read_block(const RingBuffer *rb, sample_t *out, size_t n) {
+  for (int i = 0; i < n; i++) {
+    out[i] = rb->buf[i - rb->head & rb->mask];
+  }
   return 0;
 }
 
@@ -73,57 +57,6 @@ static int rb_free(RingBuffer *rb) {
   free(rb->buf);
   rb->buf = NULL;
   return 0;
-}
-
-static float now_secondsf() {
-  struct timespec tp;
-  clock_gettime(CLOCK_MONOTONIC, &tp);
-
-  return (float)(tp.tv_sec + tp.tv_nsec / 1000000000.0);
-}
-
-static void GenerateSineWave(struct WaveCtx *ctx, void *buf,
-                             SDL_AudioStream *stream, int samples) {
-  float *data; // On crée un pointeur float data qui pointera vers l'adresse du
-               // buffer
-  data = buf;
-
-  const float phase_inc = M_PI * 2 * 440 / 44100.0f;
-
-  for (int i = 0; i < samples; i++) {
-    if (ctx->phase > M_PI * 2)
-      ctx->phase = -M_PI * 2;
-    float r = ctx->volume * sin(ctx->phase);
-    ctx->phase += phase_inc;
-    data[i] = r;
-  }
-
-  SDL_PutAudioStreamData(stream, buf, samples);
-}
-
-static void GenerateSquareWave(struct WaveCtx *ctx, void *buf,
-                               SDL_AudioStream *stream, int samples) {
-  float *data; // On crée un pointeur float data qui pointera vers l'adresse du
-               // buffer
-  data = buf;
-
-  const float phase_inc = M_PI * 2 * 440 / 44100.0f;
-
-  for (int i = 0; i < samples; i++) {
-    if (ctx->phase > M_PI * 2)
-      ctx->phase = -M_PI * 2;
-    float r = ctx->volume * sin(ctx->phase);
-    if (r > 0)
-      r = 1.0 * ctx->volume;
-    else if (r < 0)
-      r = -1.0;
-    else if (r == 0)
-      r = 0.0;
-    ctx->phase += phase_inc;
-    data[i] = r;
-  }
-
-  SDL_PutAudioStreamData(stream, buf, samples);
 }
 
 static void GenerateNoise(void *buf, int samples) {
@@ -138,77 +71,94 @@ static void GenerateNoise(void *buf, int samples) {
   if (!buf)
     return;
 
+  float *data = buf;
   for (int i = 0; i < samples; i++) {
     float r = (float)rand() / (float)RAND_MAX;
-    r = (r * 2.0f - 1.0f) * 0.2f; /* 0.2 = volume */
-    rb_write_block(buf, &r, 1);
+    r = (r * 2.0 - 1.0) * 0.5; /* 0.2 = volume */
+    data[i] = r;
   }
-}
-
-static void GenerateNote(enum WAVE_FORM form, void *buf,
-                         SDL_AudioStream *stream, void *ctx, int samples) {
-  if (samples <= 0)
-    return;
-
-  int bytes_per_sample = sizeof(float);
-
-  if (samples % bytes_per_sample != 0)
-    return;
-
-  switch (form) {
-  case SINE_FORM:
-    GenerateSineWave(ctx, buf, stream, samples);
-  case SQUARE_FORM:
-    GenerateSquareWave(ctx, buf, stream, samples);
-  }
-}
-
-static void DrawData(SDL_Renderer *renderer, SDL_Window *window, void *buf,
-                     int samples, SDL_AudioSpec *spec) 
-{
-  float *data = buf;
-  int size_data = sizeof(float);
-
-  float x, y;
-  int w, h;
-  SDL_GetWindowSize(window, &w, &h);
-  float scale_x = 1.0;
-  float scale_y = 100.0;
-  SDL_FPoint *points = malloc((size_t)samples * sizeof(*points));
-
-  SDL_SetRenderDrawColor(renderer, 255, 255, 255, SDL_ALPHA_OPAQUE);
-
-  for (int i = 0; i < samples; i++) {
-    x = (float)i - w / 2.0;
-    y = (data[i] + h / 2.0) * scale_y;
-    SDL_FPoint val = {x, y};
-    points[i] = val;
-  }
-
-  SDL_RenderPoints(renderer, points, samples);
-  free(points);
 }
 
 /* This function runs once at startup. */
-int main(int argc, char **argv) {
-
-  if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO)) {
-    SDL_Log("Couldn't initialize SDL: %s", SDL_GetError());
-    return 1;
-  }
-
+int main(void) {
   srand(time(NULL)); // seed with current time
-  
-  float *b_audio = malloc(SAMPLES_PER_FRAME * sizeof(float));
+  SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
+  SDL_Window *win = NULL;
+  SDL_Renderer *ren = NULL;
+  SDL_CreateWindowAndRenderer("Piano!", 900, 600, 0, &win, &ren);
 
-  GenerateNoise(b_audio, SAMPLES_PER_FRAME);
+  SDL_AudioSpec desired;
+  desired.channels = CHANNELS;
+  desired.format = SDL_AUDIO_F32;
+  desired.freq = SAMPLE_RATE;
 
-  RingBuffer rb;
-  rb_init(&rb, 32);
-  GenerateNoise(&rb, 8000000);
-  for (int i = 0; i < rb.size; i++) {
-    printf("i = %d: %f\n", i, rb.buf[i]);
+  SDL_AudioStream *stream = SDL_OpenAudioDeviceStream(
+      SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &desired, NULL, NULL);
+  SDL_ResumeAudioStreamDevice(stream);
+  SDL_ShowWindow(win);
+
+  bool running = 1;
+  float *chunk = malloc(CHUNK_SAMPLES * sizeof(float));
+  float *out = malloc(VISUAL_SAMPLES * sizeof(float));
+  RingBuffer vis;
+  rb_init(&vis, 8192);
+
+  // Main loop
+  while (running) {
+    SDL_Event e;
+    // On poll les events pour fermer le programme
+    while (SDL_PollEvent(&e)) {
+      if (e.type == SDL_EVENT_QUIT)
+        running = false;
+      // handle input to change freq, etc.
+    }
+
+    Osc osc;
+    osc.phase = 0.0;
+    osc.freq = 1000;
+    float phase_inc = sin(M_PI * 2 * osc.freq / SAMPLE_RATE);
+
+    for (int i = 0; i < CHUNK_SAMPLES; i++) {
+      float r = sin(osc.phase);
+      // if (r > 0) {
+      //   r = 1;
+      // } else if (r < 0) {
+      //   r = -1;
+      // } else if (r == 0) {
+      //   r = 0;
+      // }
+      chunk[i] = r;
+      osc.phase += phase_inc;
+      if (osc.phase >= M_PI * 2) {
+        osc.phase -= M_PI * 2;
+      }
+    }
+    // Génération du bruit dans le buffer chunk
+    // GenerateNoise(chunk, CHUNK_SAMPLES);
+    // On pousse les données dans le stream audio puis copie vers le ringbuffer
+    // visuel
+    SDL_PutAudioStreamData(stream, chunk, CHUNK_SAMPLES);
+    rb_write_block(&vis, chunk, CHUNK_SAMPLES);
+
+    // Reset du background en noir
+    SDL_SetRenderDrawColor(ren, 0, 0, 0, 255);
+    SDL_RenderClear(ren);
+    int w, h;
+    SDL_GetWindowSize(win, &w, &h);
+
+    SDL_SetRenderDrawColor(ren, 255, 255, 255, 255);
+    size_t samples_to_draw = w;
+    size_t start = (vis.head >= samples_to_draw)
+                       ? (vis.head - samples_to_draw)
+                       : (vis.head + vis.size - samples_to_draw);
+    for (int x = 0; x < samples_to_draw; x++) {
+      float r = vis.buf[(start + x) & vis.mask];
+      int y = (int)(h * 0.5f - r * (h * 0.2f));
+      SDL_RenderPoint(ren, (float)x, (float)y);
+    }
+    SDL_RenderPresent(ren);
   }
-  rb_free(&rb);
+
+  free(chunk);
   return 0;
 }
