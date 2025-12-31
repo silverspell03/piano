@@ -90,13 +90,16 @@ static void GenerateNoise(void *buf, int samples) {
   }
 }
 
-// Dessiner un cercle a partir de la méthode Bresenham
-static void draw_circle(SDL_Renderer *ren, float cx, float cy, float r) {
+static void draw_circle(SDL_Renderer *ren, float cx, float cy, float x,
+                        float y);
+
+static void circle_bres(SDL_Renderer *ren, float cx, float cy, float r) {
   float x = 0;
   float y = r;
   float d = 3 - 2 * r;
+  draw_circle(ren, cx, cy, x, y);
   while (x <= y) {
-    SDL_RenderPoint(ren, x, y);
+    SDL_RenderPoint(ren, cx + x, cy + y);
     if (d < 0) {
       d = d + (4 * x) + 6;
     } else {
@@ -104,7 +107,21 @@ static void draw_circle(SDL_Renderer *ren, float cx, float cy, float r) {
       y--;
     }
     x++;
+    draw_circle(ren, cx, cy, x, y);
   }
+}
+
+// Dessiner un cercle a partir de la méthode Bresenham
+static void draw_circle(SDL_Renderer *ren, float cx, float cy, float x,
+                        float y) {
+  SDL_RenderPoint(ren, cx + x, cy + y);
+  SDL_RenderPoint(ren, cx - x, cy + y);
+  SDL_RenderPoint(ren, cx + x, cy - y);
+  SDL_RenderPoint(ren, cx - x, cy - y);
+  SDL_RenderPoint(ren, cx + y, cy + x);
+  SDL_RenderPoint(ren, cx - y, cy + x);
+  SDL_RenderPoint(ren, cx + y, cy - x);
+  SDL_RenderPoint(ren, cx - y, cy - x);
 }
 
 static void init_ui(UIContext *ui) {
@@ -135,10 +152,12 @@ static void draw_ui(UIContext *ui) {
 
   SDL_FPoint p1 = {rect.x, rect.y + (rect.h / 2.0f)};
   SDL_FPoint p2 = {rect.x + rect.w, rect.y + (rect.h / 2.0f)};
-  float cx = (p2.x - p1.x) / 2.0;
+  float cx = width + (p1.x - p2.x) / 2.0;
   float cy = p1.y;
+
   SDL_RenderLine(ren, p1.x, p1.y, p2.x, p2.y);
-  draw_circle(ren, cx, cy, 50);
+  printf("cx = %f, cy = %f\n", cx, cy);
+  circle_bres(ren, cx, cy, 50);
 }
 
 /* This function runs once at startup. */
@@ -172,7 +191,7 @@ int main(void) {
 
   Osc osc;
   osc.phase = 0.0f;
-  osc.freq = 440.0f;
+  osc.freq = 110.0f;
 
   // Main loop
   while (running) {
