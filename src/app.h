@@ -2,6 +2,7 @@
 #include "SDL3/SDL_render.h"
 #include "SDL3/SDL_video.h"
 #include "audio.h"
+#include "ringbuffer.h"
 #include "ui.h"
 #include <SDL3/SDL.h>
 
@@ -16,7 +17,8 @@ struct AppCtx {
   SDL_Renderer *ren;
   int width;
   int height;
-  AudioCtx *a_ctx;
+  AudioCtx *audio;
+  RingBuffer *vrb;
 };
 
 struct AppCfg {

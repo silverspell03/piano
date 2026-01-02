@@ -6,6 +6,7 @@
 struct AudioCtx {
   SDL_AudioStream *stream;
   SDL_AudioSpec *spec;
+  
 };
 
 AudioCtx *create_audio(AudioConfig *cfg) {
@@ -21,6 +22,7 @@ AudioCtx *create_audio(AudioConfig *cfg) {
   SDL_ResumeAudioStreamDevice(ctx->stream);
   return ctx;
 }
+
 void GenerateNoise(void *buf, int samples) {
   if (samples <= 0)
     return;
