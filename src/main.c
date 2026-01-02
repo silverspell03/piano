@@ -4,6 +4,9 @@
 #include "SDL3/SDL_rect.h"
 #include "SDL3/SDL_render.h"
 #include "SDL3/SDL_video.h"
+#include "app.h"
+#include "graphics.h"
+#include "ringbuffer.h"
 #include <SDL3/SDL.h>
 #include <bits/time.h>
 #include <math.h>
@@ -11,10 +14,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include "ringbuffer.h"
-#include "audio.h"
-#include "graphics.h"
-#include "app.h"
 
 #define SAMPLE_RATE 48000.0
 #define CHANNELS 1
@@ -23,32 +22,25 @@
 #define VISUAL_SAMPLES (SAMPLE_RATE / 10) // show last 100 ms ~4800 samples
 #define CHUNK_SAMPLES 1024
 
-
 /* This function runs once at startup. */
 int main(void) {
   srand(time(NULL)); // Seed de rand() avec le temps actuel
   // Init des divers composants essentiel de SDL3
   SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
-  UIContext *ui = create_ui();
-  SDL_Renderer *ren = ui->ren;
-  SDL_Window *win = ui->win;
-  // Activation Vsync pour limiter le framerate
+  SDL_Window *win;
+  SDL_Renderer *ren;
+  SDL_CreateWindowAndRenderer("Piano!", 900, 600, SDL_WINDOW_RESIZABLE, &win,
+                              &ren);
+  AppState *app = create_app(win, ren);
+  UIContext *ui = app->uictx;
+
+  show_ui(ui);
 
   // Spécification des specs audio attendues, Float 32 bits
-  SDL_AudioSpec desired;
-  desired.channels = CHANNELS;
-  desired.format = SDL_AUDIO_F32;
-  desired.freq = SAMPLE_RATE;
-
-  // Ouverture du stream audio lié au device par défaut
-  SDL_AudioStream *stream = SDL_OpenAudioDeviceStream(
-      SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &desired, NULL, NULL);
-  SDL_ResumeAudioStreamDevice(stream);
-  SDL_ShowWindow(win);
-
-  AppState state;
-  state.running = 1;
-  state.uictx = ui;
+  SDL_AudioSpec spec;
+  spec.channels = CHANNELS;
+  spec.format = SDL_AUDIO_F32;
+  spec.freq = SAMPLE_RATE;
 
   float *chunk = malloc(CHUNK_SAMPLES * sizeof(float));
   float *out = malloc(VISUAL_SAMPLES * sizeof(float));
@@ -60,8 +52,8 @@ int main(void) {
   osc.freq = 110.0f;
 
   // Main loop
-  while (state.running) {
-    handle_input(&state);
+  while (app->running) {
+    handle_input(app);
     float phase_inc = M_PI * 2 * osc.freq / SAMPLE_RATE;
 
     for (int i = 0; i < CHUNK_SAMPLES; i++) {
@@ -107,13 +99,16 @@ int main(void) {
       points[x].y = (float)y;
     }
     SDL_RenderLines(ren, points, samples_to_draw);
-    draw_ui(&ui);
+    draw_ui(ui);
     SDL_RenderPresent(ren);
   }
 
   rb_free(&vis);
   free(chunk);
   SDL_DestroyAudioStream(stream);
-  free_ui(&ui);
+  destroy_app(app);
+  SDL_DestroyRenderer(ren);
+  SDL_DestroyWindow(win);
+  SDL_Quit();
   return 0;
 }

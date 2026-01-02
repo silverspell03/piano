@@ -1,10 +1,10 @@
 #include "ui.h"
 #include "SDL3/SDL_render.h"
 #include "SDL3/SDL_video.h"
+#include "graphics.h"
 #include <SDL3/SDL.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "graphics.h"
 
 struct UIContext {
   SDL_Window *win;
@@ -18,24 +18,21 @@ struct UIContext {
   bool mouse_released;
 };
 
-UIContext *create_ui()
-{
+UIContext *create_ui(SDL_Renderer *ren) {
   UIContext *ui = malloc(sizeof(UIContext));
-  SDL_CreateWindowAndRenderer("Piano!", ui->width, ui->heigth,
-                              SDL_WINDOW_RESIZABLE, &ui->win, &ui->ren);
   SDL_GetWindowSize(ui->win, &ui->width, &ui->heigth);
-  ui->heigth = 600;
-  ui->width = 900;
   SDL_SetRenderVSync(ui->ren, 1);
   return ui;
 }
 
-void free_ui(UIContext *ui) {
-  SDL_DestroyRenderer(ui->ren);
-  SDL_DestroyWindow(ui->win);
-  SDL_Quit();
-  free(ui);
+void ui_on_resize(UIContext *ui, int w, int h) {
+  ui->width = w;
+  ui->heigth = h;
 }
+
+void show_ui(UIContext *ui) { SDL_ShowWindow(ui->win); }
+
+void ui_destroy(UIContext *ui) { free(ui); }
 
 void draw_ui(UIContext *ui) {
   int width = ui->width;
