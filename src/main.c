@@ -27,12 +27,37 @@ int main(void) {
   srand(time(NULL)); // Seed de rand() avec le temps actuel
   // Init des divers composants essentiel de SDL3
   SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
-  SDL_Window *win;
-  SDL_Renderer *ren;
-  SDL_CreateWindowAndRenderer("Piano!", 900, 600, SDL_WINDOW_RESIZABLE, &win,
-                              &ren);
-  AppState *app = create_app(win, ren);
-  UIContext *ui = app->uictx;
+  AppCfg cfg = {
+      .title = "Piano!",
+      .win_w = 900,
+      .win_h = 600,
+      .a_format = SDL_AUDIO_F32,
+      .a_sample_rate = 48000,
+      .a_freq = 440.0f,
+  };
+  AppCtx *app = create_app(&cfg);
+  bool running = true;
+  uint64_t last = SDL_GetTicks();
+
+  while (running) {
+    SDL_Event ev;
+    while (SDL_PollEvent(&ev)) {
+      if (ev.type == SDL_EVENT_QUIT)
+        running = false;
+
+      app_handle_event(app, &ev);
+    }
+
+    uint64_t now = SDL_GetTicks();
+    float dt = (now - last) / 1000.0f;
+    last = now;
+
+    app_update(app, dt);
+    app_draw(app);
+  }
+
+  app_destroy(app);
+  SDL_Quit();
 
   show_ui(ui);
 

@@ -1,19 +1,25 @@
 #include "audio.h"
 #include "SDL3/SDL_audio.h"
-#include "app.h"
 #include <SDL3/SDL.h>
 #include <stdlib.h>
 
-AudioCtx *create_audio() {
+struct AudioCtx {
+  SDL_AudioStream *stream;
+  SDL_AudioSpec *spec;
+};
 
+AudioCtx *create_audio(AudioConfig *cfg) {
+
+  AudioCtx *ctx = malloc(sizeof(*ctx));
+  SDL_AudioSpec spec = {cfg->format, cfg->channels, cfg->freq};
   // Ouverture du stream audio lié au device par défaut
-  app->stream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK,
-                                          spec, NULL, NULL);
-  if (!app->stream) {
+  ctx->stream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK,
+                                          &spec, NULL, NULL);
+  if (!ctx->stream) {
     return NULL;
   }
-  SDL_ResumeAudioStreamDevice(app->stream);
-  return 0;
+  SDL_ResumeAudioStreamDevice(ctx->stream);
+  return ctx;
 }
 void GenerateNoise(void *buf, int samples) {
   if (samples <= 0)

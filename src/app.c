@@ -1,20 +1,36 @@
 #include "app.h"
 #include "SDL3/SDL_audio.h"
+#include "SDL3/SDL_error.h"
 #include "SDL3/SDL_render.h"
 #include "SDL3/SDL_video.h"
 #include "audio.h"
+#include "graphics.h"
 #include <SDL3/SDL.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-AppState *create_app(SDL_Window *win, SDL_Renderer *ren, SDL_AudioSpec *spec) {
-  AppState *app = malloc(sizeof(AppState));
+#define SAMPLE_RATE 48000.0
+#define CHANNELS 1
+#define FPS 60.0
+#define SAMPLES_PER_FRAME (SAMPLE_RATE / FPS)
+
+AppCtx *create_app(AppCfg *cfg) {
+  AppCtx *app = malloc(sizeof(AppCtx));
+  SDL_Window *win;
+  SDL_Renderer *ren;
+  if (SDL_CreateWindowAndRenderer(cfg->title, cfg->win_w, cfg->win_h,
+                                  SDL_WINDOW_RESIZABLE, &win, &ren)) {
+    printf("%s\n", SDL_GetError());
+    free(app);
+    return NULL;
+  }
   app->running = 1;
-  app->win = win;
-  app->ren = ren;
   app->uictx = create_ui(ren);
 
-  if (!create_audio()) {
+  AudioConfig *audio_cfg = {cfg->a_freq, cfg->a_sample_rate, cfg->a_format, 1,
+                            SAMPLES_PER_FRAME};
+  app->audio = create_audio(&audio_cfg);
+  if (!create_audio(&cfg->audio)) {
     printf("Error init audio stream\n");
     return NULL;
   }
@@ -22,7 +38,7 @@ AppState *create_app(SDL_Window *win, SDL_Renderer *ren, SDL_AudioSpec *spec) {
   return app;
 }
 
-int destroy_app(AppState *app) {
+int destroy_app(AppCtx *app) {
   if (!app) {
     return -1;
   }
