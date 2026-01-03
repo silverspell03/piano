@@ -1,11 +1,10 @@
 #include "app.h"
-#include "ringbuffer.h"
 #include "SDL3/SDL_audio.h"
 #include "SDL3/SDL_error.h"
 #include "SDL3/SDL_render.h"
 #include "SDL3/SDL_video.h"
-#include "audio.h"
 #include "graphics.h"
+#include "ringbuffer.h"
 #include <SDL3/SDL.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,34 +15,31 @@
 #define SAMPLES_PER_FRAME (SAMPLE_RATE / FPS)
 #define VISUAL_SAMPLES (SAMPLE_RATE / 10.0) // show last 100 ms ~4800 samples
 #define CHUNK_SAMPLES 1024
+#define WIDTH 900
+#define HEIGTH 600
 
-AppCtx *create_app(AppCfg *cfg) {
-  AppCtx *app = malloc(sizeof(AppCtx));
-  SDL_Window *win;
-  SDL_Renderer *ren;
-  if (SDL_CreateWindowAndRenderer(cfg->title, cfg->win_w, cfg->win_h,
-                                  SDL_WINDOW_RESIZABLE, &win, &ren)) {
+App *create_app() {
+  App *app = malloc(sizeof(*app));
+  if (SDL_CreateWindowAndRenderer("Piano!", WIDTH, HEIGTH, SDL_WINDOW_RESIZABLE,
+                                  &app->win, &app->ren)) {
     printf("%s\n", SDL_GetError());
     free(app);
     return NULL;
   }
   app->running = 1;
-  app->uictx = create_ui(ren);
+  app->uictx = create_ui(app->ren);
 
-  AudioConfig audio_cfg = {cfg->a_freq, cfg->a_sample_rate, cfg->a_format, 1,
-                            (int)SAMPLES_PER_FRAME};
-  app->audio = create_audio(&audio_cfg);
-  if (!create_audio(NULL)) {
-    printf("Error init audio stream\n");
-    return NULL;
-  }
+  SDL_AudioSpec spec = {SDL_AUDIO_F32, 1, 48000};
+  app->stream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK,
+                                          &spec, NULL, NULL);
+
+  SDL_ResumeAudioStreamDevice(app->stream);
   rb_init(app->vrb, 8192);
 
   return app;
 }
 
-void update_app(AppCtx *app)
-{
+void app_update(App *app) {
   // Reset du background en noir
   SDL_SetRenderDrawColor(app->ren, 0, 0, 0, 255);
   SDL_RenderClear(app->ren);
@@ -62,13 +58,13 @@ void update_app(AppCtx *app)
     points[x].x = (float)x;
     points[x].y = (float)y;
   }
-  SDL_RenderLines(ren, points, samples_to_draw);
-  draw_ui(ui);
-  SDL_RenderPresent(ren);
-
+  SDL_RenderLines(app->ren, points, samples_to_draw);
+  draw_ui(app->uictx);
+  SDL_RenderPresent(app->ren);
+  GenerateNoise(app->stream, SAMPLES_PER_FRAME);
 }
 
-int destroy_app(AppCtx *app) {
+int destroy_app(App *app) {
   if (!app) {
     return -1;
   }
@@ -77,7 +73,7 @@ int destroy_app(AppCtx *app) {
   return 0;
 }
 
-void handle_input(AppCtx *app) {
+void app_handle_event(App *app) {
   SDL_Event e;
 
   // On poll les events pour fermer le programme

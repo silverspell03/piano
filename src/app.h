@@ -6,18 +6,17 @@
 #include "ui.h"
 #include <SDL3/SDL.h>
 
-typedef struct AppCtx AppCtx;
+typedef struct App App;
 typedef struct AppCfg AppCfg;
 
-struct AppCtx {
+struct App {
   bool running;
-  SDL_Event *e;
   UIContext *uictx;
   SDL_Window *win;
   SDL_Renderer *ren;
   int width;
   int height;
-  AudioCtx *audio;
+  SDL_AudioStream *stream;
   RingBuffer *vrb;
 };
 
@@ -30,7 +29,9 @@ struct AppCfg {
   float a_freq;
 };
 
-AppCtx *create_app(AppCfg *cfg); // Creation du app contexte
-
-void handle_event(AppCtx *app); // Fonction s'occupant de la gestion des Inputs
-int destroy_app(AppCtx *app);
+App *create_app(); // Creation du app contexte
+// Fonction s'occupant de la gestion des Inputs
+void app_handle_event(App *app);
+void app_update(App *app);
+void app_draw(App *app);
+int destroy_app(App *app);
