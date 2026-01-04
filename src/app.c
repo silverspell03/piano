@@ -6,12 +6,13 @@
 #include "graphics.h"
 #include "ringbuffer.h"
 #include <SDL3/SDL.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-#define SAMPLE_RATE 48000.0
+#define SAMPLE_RATE 48000
 #define CHANNELS 1
-#define FPS 60.0
+#define FPS 60
 #define SAMPLES_PER_FRAME (SAMPLE_RATE / FPS)
 #define VISUAL_SAMPLES (SAMPLE_RATE / 10.0) // show last 100 ms ~4800 samples
 #define CHUNK_SAMPLES 1024
@@ -40,37 +41,28 @@ App *create_app() {
   app->stream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK,
                                           &spec, NULL, NULL);
   SDL_ResumeAudioStreamDevice(app->stream);
-  RingBuffer *vrb = malloc(sizeof(*vrb));
-  app->vrb = vrb;
-  rb_init(app->vrb, 8192);
 
-  app->a_buf = malloc(SAMPLES_PER_FRAME * sizeof(sample_t));
+  Osc osc;
+  osc.freq = 4440.0f;
+  osc.phase = 0.0f;
+
+  app->osc = osc;
   return app;
 }
 
-void app_update(App *app) {
+void app_update(App *app, float dt) {
+  float phase_inc = M_PI * 2 * app->osc.freq / (float)SAMPLE_RATE;
+  int samples = dt * SAMPLE_RATE;
+  float data[samples];
 
-  GenerateNoise(app->a_buf, SAMPLES_PER_FRAME);
-  SDL_PutAudioStreamData(app->stream, app->a_buf, SAMPLES_PER_FRAME);
-
-  rb_write_block(app->vrb, app->a_buf, VISUAL_SAMPLES);
-
-  SDL_SetRenderDrawColor(app->ren, 255, 255, 255, 255);
-  size_t samples_to_draw = app->width;
-  size_t start = (app->vrb->head >= samples_to_draw)
-                     ? (app->vrb->head - samples_to_draw)
-                     : (app->vrb->head + app->vrb->size - samples_to_draw);
-
-  // Rendu des points de l'onde sonore
-  SDL_FPoint *points = malloc(samples_to_draw * sizeof(SDL_FPoint));
-  for (int x = 0; x < samples_to_draw; x++) {
-    float r = app->vrb->buf[(start + x) & app->vrb->mask];
-    int y = (int)(app->height * 0.5f - r * (app->height * 0.2f));
-    points[x].x = (float)x;
-    points[x].y = (float)y;
+  for (int i = 0; i < samples; ++i)
+  {
+    float r = sin(app->osc.phase) * 0.2f;
+    data[i] = r;
+    app->osc.phase += phase_inc;
+    if (app->osc.phase >= (2*M_PI)) {app->osc.phase -= 2*M_PI;}
   }
-  SDL_RenderLines(app->ren, points, samples_to_draw);
-  SDL_RenderPresent(app->ren);
+  SDL_PutAudioStreamData(app->stream, data, samples * sizeof(sample_t));
 }
 
 int destroy_app(App *app) {

@@ -16,11 +16,12 @@ typedef struct App {
   SDL_AudioStream *stream;
   void *a_buf;
   RingBuffer *vrb;
+  Osc osc;
 } App;
 
 App *create_app(); // Creation du app contexte
 // Fonction s'occupant de la gestion des Inputs
 void app_handle_event(App *app);
-void app_update(App *app);
+void app_update(App *app, float dt);
 void app_draw(App *app);
 int destroy_app(App *app);

@@ -38,7 +38,7 @@ int main(void) {
     float dt = (now - last) / 1000.0f;
     last = now;
 
-    app_update(app);
+    app_update(app, dt);
   }
 
   destroy_app(app);
