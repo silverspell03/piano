@@ -18,13 +18,6 @@ struct UIContext {
   bool mouse_released;
 };
 
-UIContext *create_ui(SDL_Renderer *ren) {
-  UIContext *ui = malloc(sizeof(UIContext));
-  SDL_GetWindowSize(ui->win, &ui->width, &ui->heigth);
-  SDL_SetRenderVSync(ui->ren, 1);
-  return ui;
-}
-
 void ui_on_resize(UIContext *ui, int w, int h) {
   ui->width = w;
   ui->heigth = h;

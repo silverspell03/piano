@@ -6,10 +6,7 @@
 #include "ui.h"
 #include <SDL3/SDL.h>
 
-typedef struct App App;
-typedef struct AppCfg AppCfg;
-
-struct App {
+typedef struct App {
   bool running;
   UIContext *uictx;
   SDL_Window *win;
@@ -17,17 +14,9 @@ struct App {
   int width;
   int height;
   SDL_AudioStream *stream;
+  void *a_buf;
   RingBuffer *vrb;
-};
-
-struct AppCfg {
-  char *title;
-  int win_w;
-  int win_h;
-  SDL_AudioFormat a_format;
-  int a_sample_rate;
-  float a_freq;
-};
+} App;
 
 App *create_app(); // Creation du app contexte
 // Fonction s'occupant de la gestion des Inputs

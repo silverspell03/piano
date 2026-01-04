@@ -21,11 +21,14 @@ int main(void) {
   // Init des divers composants essentiel de SDL3
   SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
   App *app = create_app();
+  if (!app) {
+    return -1;
+  }
   bool running = true;
   uint64_t last = SDL_GetTicks();
-  SDL_Event e;
 
   while (running) {
+    SDL_Event e;
     while (SDL_PollEvent(&e)) {
       if (e.type == SDL_EVENT_QUIT)
         running = false;

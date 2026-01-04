@@ -19,30 +19,41 @@
 #define HEIGTH 600
 
 App *create_app() {
-  App *app = malloc(sizeof(*app));
-  if (SDL_CreateWindowAndRenderer("Piano!", WIDTH, HEIGTH, SDL_WINDOW_RESIZABLE,
-                                  &app->win, &app->ren)) {
+  App *app = calloc(1, sizeof(*app));
+
+  if (!SDL_CreateWindowAndRenderer("Piano!", WIDTH, HEIGTH,
+                                   SDL_WINDOW_RESIZABLE, &app->win,
+                                   &app->ren)) {
     printf("%s\n", SDL_GetError());
     free(app);
     return NULL;
   }
+  // Reset du background en noir
+  SDL_SetRenderDrawColor(app->ren, 0, 0, 0, 255);
+  SDL_RenderClear(app->ren);
+
   app->running = 1;
-  app->uictx = create_ui(app->ren);
+
+  SDL_SetRenderVSync(app->ren, 1);
 
   SDL_AudioSpec spec = {SDL_AUDIO_F32, 1, 48000};
   app->stream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK,
                                           &spec, NULL, NULL);
-
   SDL_ResumeAudioStreamDevice(app->stream);
+  RingBuffer *vrb = malloc(sizeof(*vrb));
+  app->vrb = vrb;
   rb_init(app->vrb, 8192);
 
+  app->a_buf = malloc(SAMPLES_PER_FRAME * sizeof(sample_t));
   return app;
 }
 
 void app_update(App *app) {
-  // Reset du background en noir
-  SDL_SetRenderDrawColor(app->ren, 0, 0, 0, 255);
-  SDL_RenderClear(app->ren);
+
+  GenerateNoise(app->a_buf, SAMPLES_PER_FRAME);
+  SDL_PutAudioStreamData(app->stream, app->a_buf, SAMPLES_PER_FRAME);
+
+  rb_write_block(app->vrb, app->a_buf, VISUAL_SAMPLES);
 
   SDL_SetRenderDrawColor(app->ren, 255, 255, 255, 255);
   size_t samples_to_draw = app->width;
@@ -59,9 +70,7 @@ void app_update(App *app) {
     points[x].y = (float)y;
   }
   SDL_RenderLines(app->ren, points, samples_to_draw);
-  draw_ui(app->uictx);
   SDL_RenderPresent(app->ren);
-  GenerateNoise(app->stream, SAMPLES_PER_FRAME);
 }
 
 int destroy_app(App *app) {
