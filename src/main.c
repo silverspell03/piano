@@ -15,7 +15,21 @@
 #include <stdlib.h>
 #include <time.h>
 
-/* This function runs once at startup. */
+/**
+ * @brief Point d'entrée : initialise SDL, crée l'application, lance la
+ *        boucle principale (poll events + update), puis nettoie.
+ *
+ * @param argc Nombre d'arguments.
+ * @param argv argv[1] optionnel : fréquence initiale de l'oscillateur en
+ *             Hz (440.0f par défaut si absent).
+ *
+ * @return 0 en cas de succès, -1 si create_app() échoue.
+ *
+ * @warning Le polling d'événements ici est minimal (seul SDL_EVENT_QUIT
+ *          est traité) et n'appelle pas app_handle_event() : la logique
+ *          de resize et de clic souris définie dans app.c n'est donc
+ *          jamais exécutée.
+ */
 int main(int argc, char **argv) {
   float freq;
   if (argc == 1) {
