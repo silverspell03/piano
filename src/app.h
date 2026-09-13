@@ -1,3 +1,5 @@
+#pragma once
+
 #include "SDL3/SDL_audio.h"
 #include "SDL3/SDL_render.h"
 #include "SDL3/SDL_video.h"
@@ -19,9 +21,9 @@ typedef struct App {
   Osc osc;
 } App;
 
-App *create_app(); // Creation du app contexte
+App *create_app(float freq); // Creation du app contexte
 // Fonction s'occupant de la gestion des Inputs
-void app_handle_event(App *app);
+bool app_handle_event(App *app);
 void app_update(App *app, float dt);
 void app_draw(App *app);
 int destroy_app(App *app);

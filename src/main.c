@@ -16,11 +16,18 @@
 #include <time.h>
 
 /* This function runs once at startup. */
-int main(void) {
+int main(int argc, char **argv) {
+  float freq;
+  if (argc == 1) {
+    freq = 440.0f;
+  } else {
+    freq = atof(argv[1]);
+  }
   srand(time(NULL)); // Seed de rand() avec le temps actuel
   // Init des divers composants essentiel de SDL3
   SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
-  App *app = create_app();
+  printf("%f\n", freq);
+  App *app = create_app(freq);
   if (!app) {
     return -1;
   }
@@ -29,11 +36,9 @@ int main(void) {
 
   while (running) {
     SDL_Event e;
-    while (SDL_PollEvent(&e)) {
-      if (e.type == SDL_EVENT_QUIT)
-        running = false;
-    }
 
+    // la fonction renvoie l'état app->running
+    running = app_handle_event(app);
     uint64_t now = SDL_GetTicks();
     float dt = (now - last) / 1000.0f;
     last = now;
