@@ -10,8 +10,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define SAMPLE_RATE 48000
-#define CHANNELS 1
 #define FPS 60
 #define SAMPLES_PER_FRAME (SAMPLE_RATE / FPS)
 #define CHUNK_SAMPLES 1024
@@ -31,6 +29,11 @@ App *create_app(float freq) {
   app->running = 1;
 
   SDL_SetRenderVSync(app->ren, 1);
+
+  // On crée le contexte UI
+  app->height = HEIGHT;
+  app->width = WIDTH;
+  app->uictx = create_ui(app->ren, WIDTH, HEIGHT);
 
   SDL_AudioSpec spec = {SDL_AUDIO_F32, 1, 48000};
   app->stream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK,
@@ -79,6 +82,7 @@ void app_update(App *app, float dt) {
 
   SDL_SetRenderDrawColor(app->ren, 0, 0, 0, 255);
   SDL_RenderClear(app->ren);
+
   float phase_inc = M_PI * 2 * app->osc.freq / (float)SAMPLE_RATE;
   float data[samples];
 
@@ -93,7 +97,9 @@ void app_update(App *app, float dt) {
   SDL_PutAudioStreamData(app->stream, data, samples * sizeof(sample_t));
   RingBuffer *vrb = app->vrb;
   rb_write_block(vrb, data, samples);
+
   draw_data(app, samples, vrb);
+  draw_ui(app->uictx);
 }
 
 int destroy_app(App *app) {
@@ -108,6 +114,7 @@ int destroy_app(App *app) {
 
 bool app_handle_event(App *app) {
   SDL_Event e;
+  UIContext *ui = app->uictx;
 
   while (SDL_PollEvent(&e)) {
     switch (e.type) {
@@ -125,10 +132,10 @@ bool app_handle_event(App *app) {
       if (!(SDL_GetMouseState(&x, &y) & SDL_BUTTON_LMASK)) {
         break;
       }
-      // On mappe x (0..width) sur une plage de fréquence, ex: 100..1000 Hz
+      // On mappe x (0..width) sur une plage de fréquence, ex: 100..10000 Hz
       if (app->width > 0) {
-        float t = x / (float)app->width;     // 0.0 -> 1.0
-        app->osc.freq = 100.0f + t * 900.0f; // 100..1000 Hz
+        float t = x / (float)app->width;       // 0.0 -> 1.0
+        app->osc.freq = 100.0f + t * 19000.0f; // 100..10000 Hz
       }
       break;
     }

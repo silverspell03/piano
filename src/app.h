@@ -8,17 +8,28 @@
 #include "ui.h"
 #include <SDL3/SDL.h>
 
+typedef struct AudioCtx AudioCtx;
+typedef struct RingBuffer RingBuffer;
+
 typedef struct App {
-  bool running;
+  /* Pointers (64-bit / 8 bytes on 64-bit platforms) */
   UIContext *uictx;
   SDL_Window *win;
   SDL_Renderer *ren;
-  int width;
-  int height;
+  AudioCtx *actx;
   SDL_AudioStream *stream;
   void *a_buf;
   RingBuffer *vrb;
+
+  /* Embedded structs / Larger types */
   Osc osc;
+
+  /* 32-bit integers (4 bytes) */
+  int width;
+  int height;
+
+  /* Booleans / Flags (1 byte) */
+  bool running;
 } App;
 
 /**

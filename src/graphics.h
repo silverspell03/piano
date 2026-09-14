@@ -20,9 +20,9 @@ void draw_circle(SDL_Renderer *ren, float cx, float cy, float r);
  * @brief Lit les derniers échantillons audio du ring buffer et les
  *        dessine sous forme de courbe, puis présente le frame.
  *
- * @param app     Contexte applicatif, fournit le renderer utilisé.
- * @param samples Nombre d'échantillons à lire et dessiner.
- * @param vrb     Ring buffer contenant les échantillons audio.
+ * @param renderer  Renderer utilisé.
+ * @param samples   Nombre d'échantillons à lire et dessiner.
+ * @param vrb       Ring buffer contenant les échantillons audio.
  *
  * @return void.
  *

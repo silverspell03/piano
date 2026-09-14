@@ -7,7 +7,6 @@
 #include <stdlib.h>
 
 struct UIContext {
-  SDL_Window *win;
   SDL_Renderer *ren;
   int width, heigth;
   Widget *widgets;
@@ -18,12 +17,20 @@ struct UIContext {
   bool mouse_released;
 };
 
+// On alloue le struct avec le width et heigth initial
+UIContext *create_ui(SDL_Renderer *ren, int w, int h) {
+  UIContext *ui = malloc(sizeof(UIContext));
+
+  ui->width = w;
+  ui->heigth = h;
+  ui->ren = ren;
+  return ui;
+}
+
 void ui_on_resize(UIContext *ui, int w, int h) {
   ui->width = w;
   ui->heigth = h;
 }
-
-void show_ui(UIContext *ui) { SDL_ShowWindow(ui->win); }
 
 void ui_destroy(UIContext *ui) { free(ui); }
 
@@ -45,6 +52,5 @@ void draw_ui(UIContext *ui) {
   float cy = p1.y;
 
   SDL_RenderLine(ren, p1.x, p1.y, p2.x, p2.y);
-  printf("cx = %f, cy = %f\n", cx, cy);
   draw_circle(ren, cx, cy, 50);
 }

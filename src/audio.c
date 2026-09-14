@@ -10,6 +10,7 @@ struct AudioCtx {
 
 AudioCtx *create_audio(AudioConfig *cfg) {
 
+  // On alloue la mémoire pour le contexte audio
   AudioCtx *ctx = malloc(sizeof(*ctx));
   SDL_AudioSpec spec = {cfg->format, cfg->channels, cfg->freq};
   // Ouverture du stream audio lié au device par défaut

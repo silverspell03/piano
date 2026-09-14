@@ -1,3 +1,5 @@
+#pragma once
+
 #include "SDL3/SDL_render.h"
 #include "SDL3/SDL_video.h"
 typedef struct UIContext UIContext;
@@ -15,7 +17,7 @@ typedef struct Widget Widget;
  * @note Propriété mémoire : l'appelant devient propriétaire du UIContext
  *       retourné et doit appeler ui_destroy() pour le libérer.
  */
-UIContext *create_ui(SDL_Renderer *ren);
+UIContext *create_ui(SDL_Renderer *ren, int w, int h);
 
 /**
  * @brief Met à jour les dimensions connues par l'UI (ex: après un resize

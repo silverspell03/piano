@@ -1,6 +1,9 @@
 #include "SDL3/SDL_audio.h"
 #include <SDL3/SDL.h>
 
+#define SAMPLE_RATE 48000
+#define CHANNELS 1
+
 typedef struct Osc Osc;
 typedef struct AudioCtx AudioCtx;
 

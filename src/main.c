@@ -38,13 +38,17 @@ int main(int argc, char **argv) {
     freq = atof(argv[1]);
   }
   srand(time(NULL)); // Seed de rand() avec le temps actuel
+
   // Init des divers composants essentiel de SDL3
   SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
   printf("%f\n", freq);
+
+  // Création de la structure App
   App *app = create_app(freq);
   if (!app) {
     return -1;
   }
+
   bool running = true;
   uint64_t last = SDL_GetTicks();
 
@@ -53,6 +57,7 @@ int main(int argc, char **argv) {
 
     // la fonction renvoie l'état app->running
     running = app_handle_event(app);
+
     uint64_t now = SDL_GetTicks();
     float dt = (now - last) / 1000.0f;
     last = now;
